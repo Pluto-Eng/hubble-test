@@ -1,2 +1,3 @@
-# signwell
-Testing signwell for Hubble integration
+# Hubble-Test
+
+Testing playground for the hubble x charon integration

@@ -1,0 +1,26 @@
+BANK STATEMENT - DECEMBER 2023
+
+Account Holder: Jennifer Williams
+Account Number: ****5678
+Address: 321 Elm Street, Austin, TX 78701
+Phone: 512-555-2345
+
+Account Summary:
+Beginning Balance: $45,230.50
+Ending Balance: $52,180.75
+Total Deposits: $8,500.00
+Total Withdrawals: $1,549.75
+
+Transaction History:
+12/01/2023 - Salary Deposit: $6,500.00
+12/05/2023 - Rent Payment: -$2,200.00
+12/15/2023 - Bonus Deposit: $2,000.00
+12/20/2023 - Groceries: -$150.25
+12/25/2023 - Holiday Shopping: -$199.50
+
+Employment Information:
+Employer: Williams Design Studio
+Employment Status: Employed
+Annual Income: $78,000
+
+This bank statement shows regular income and expenses for loan application purposes. 

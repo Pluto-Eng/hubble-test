@@ -1,0 +1,28 @@
+2023 TAX RETURN DOCUMENT
+
+Taxpayer Information:
+Name: Michael Chen
+Address: 789 Pine Street, Seattle, WA 98101
+Phone: 206-555-4567
+SSN: ***-**-1234
+
+Income Information:
+Annual Income: $142,500
+Employment Status: Employed
+Employer: TechCorp Inc.
+W-2 Income: $142,500
+Interest Income: $2,300
+Dividend Income: $1,800
+
+Deductions:
+Mortgage Interest: $12,000
+Property Tax: $8,500
+Charitable Contributions: $3,200
+
+Tax Summary:
+Total Income: $146,600
+Total Deductions: $23,700
+Taxable Income: $122,900
+Tax Due: $18,450
+
+This document contains financial information that should be extracted by the PDF parser. 

@@ -1,0 +1,23 @@
+LOAN APPLICATION FORM
+
+Personal Information:
+Name: Sarah Johnson
+Address: 456 Oak Avenue, San Francisco, CA 94102
+Phone: 415-555-7890
+Email: sarah.johnson@email.com
+
+Employment Information:
+Employment Status: Self-Employed
+Company: Johnson Consulting LLC
+Annual Income: $185,000
+Years Employed: 8
+
+Financial Information:
+Bank Account: Chase Bank
+Account Number: ****1234
+Monthly Rent: $3,200
+Credit Score: 785
+
+Additional Information:
+This is a sample loan application document for testing purposes.
+The PDF parser should extract the personal information fields above. 

@@ -1,134 +1,41 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Logs & Debug
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Dependency Folders
+# dependencies
 /node_modules
-jspm_packages/
-bower_components
-web_modules/
-
-# Yarn
+/.pnp
+.pnp.*
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-.yarn-integrity
 
-# PnP
-/.pnp
-.pnp.*
+# testing
+/coverage
 
-# Build output & Compiled files
-/build
-build/Release
-dist
+# next.js
+/.next/
 /out/
 
-# Framework Specific
-# Next.js
-/.next/
-# Nuxt.js
-.nuxt
-# Gatsby
-# .cache/ # Covered by general .cache/ below
-# public # Comment in if using Gatsby: https://nextjs.org/blog/next-9-1#public-directory-support
-# VuePress
-.vuepress/dist
-# VitePress
-**/.vitepress/dist
-**/.vitepress/cache
-# Docusaurus
-.docusaurus
-# Parcel
-.parcel-cache
+# production
+/build
 
-# Test & Coverage
-/coverage
-lib-cov
-*.lcov
-.nyc_output
-
-# Caches
-*.tsbuildinfo
-.npm
-.eslintcache
-.stylelintcache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-.fusebox/
-.cache/
-.temp/
-
-# Environment Variables
-.env*
-.env.local
-# .env.local.example # Often useful to commit a template
-
-# OS, Editor, and Misc
+# misc
 .DS_Store
 *.pem
-.grunt
-.lock-wscript
-.node_repl_history
-*.tgz
-.vscode-test
-.tern-port
-.idea/
-.vscode/
-*.swp
-*.swo
-.cursorrules
-certificates
 
-# Serverless Framework
-.serverless/
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Vercel
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
 .vercel
 
-# Local Databases
-.dynamodb/
-
-# AWS Amplify
-#amplify-do-not-edit-begin
-amplify/\#current-cloud-backend
-amplify/.config/local-*
-amplify/logs
-amplify/mock-data
-amplify/mock-api-resources
-amplify/backend/amplify-meta.json
-amplify/backend/.temp
-aws-exports.js
-awsconfiguration.json
-amplifyconfiguration.json
-amplifyconfiguration.dart
-amplify-build-config.json
-amplify-gradle-config.json
-amplifytools.xcconfig
-.secret-*
-**.sample
-#amplify-do-not-edit-end
-
-# TypeScript (next-env.d.ts is usually project specific and kept)
-# next-env.d.ts # Already part of Next.js project structure usually, not ignored by default
-.certs
+# typescript
+*.tsbuildinfo
+next-env.d.ts

@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ESNext", //changed from ES2017 to ESNext
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -19,9 +21,25 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"], // Changed from "./*" to "./src/*" as entire app is under src/
+
+      "@/ui/*": ["./src/shared/components/ui/*"],
+      "@/components/*": ["./src/shared/components/*"],
+      "@/layout/*": ["./src/shared/layout/*"],
+      "@/hooks/*": ["./src/shared/hooks/*"],
+      "@/types/*": ["./src/shared/types/*"],
+      "@/utils/*": ["./src/shared/utils/*"],
+      "@/providers/*": ["./src/shared/providers/*"],
+
+      "@/domains/*": ["./src/domains/*"],
+      "@/action/*": ["./src/actions/*"],
+
+      "@/lib/*": ["./src/lib/*"],
+      "@/config/*": ["./config/*"],
+
+      "@/app/*": ["./src/app/*"] // root of app for pages and API routes
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", ".next/types/**/*.ts"],
   "exclude": ["node_modules", "scripts"]
 }

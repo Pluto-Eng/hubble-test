@@ -1,19 +1,13 @@
 import { Logger } from '@/lib/logger';
 
+if (typeof globalThis !== 'undefined') globalThis.log = log;
+if (typeof window !== 'undefined') (window as any).log = log;
+if (typeof global !== 'undefined') (global as any).log = log;
 declare global {
   var log: Logger;
 }
 
 export {};
-
-// Shared types used across multiple domains
-export interface ApiResponse<T = any> {
-  id: string;
-  message: string;
-  statusCode: number;
-  data: T;
-  count?: number;
-}
 
 export interface PaginationParams {
   limit?: number;
@@ -48,4 +42,4 @@ export interface Currency {
   NZD: 'NZD';
 }
 
-export type CurrencyType = keyof Currency; 
+export type CurrencyType = keyof Currency;

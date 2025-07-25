@@ -1,3 +1,4 @@
 // Accounts domain
 export * from './types';
-export * from './client'; 
+export * from './client';
+export * from './validation';

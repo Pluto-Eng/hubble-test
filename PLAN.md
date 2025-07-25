@@ -31,23 +31,20 @@ This application follows a **domain-driven design** with **route groups** for cl
 - **Compliance Reporting** and audit trails
 - **System Configuration** and integration management
 
-### Technical Features
-
-- **Next.js 14** with App Router and Server Actions
-- **TypeScript** for type safety
-- **Tailwind CSS** with custom design system
-- **Auth.js v5** for authentication and authorization
-- **Role-based Access Control** (User, Admin, Super Admin)
-- **Comprehensive Logging** with Winston
-- **Error Handling** and monitoring
-- **Rate Limiting** and security headers
-
 ### External Backend Charon API Features
 
 - **Database Integration** with AWS RDS
 - **File Upload** to AWS S3
 
 ## 📁 Project Structure
+
+**Implications for RBAC:**
+
+- **User Role (Individual):** When an individual user logs in, their `session.user.id` is their `User` ID. When they try to access `accounts/{id}`, `loan-applications/{id}`, `loans/{id}`, etc., the authorization logic must check if the `id` in the URL/payload corresponds to an `Account` that _their_ `User` ID is linked to.
+- **Broker Admin/Fund Role:** These roles are likely associated with `Organizations`. Their permissions would be scoped to `Accounts` and `Users` that belong to or are managed by _their_ `Organization`. This requires additional lookup logic: `session.user.organizationId` (if stored in session) -\> fetch `accounts` linked to that `organizationId`.
+
+**Refinement for `admin/users` & `admin/accounts` API routes:**
+The `api/proxy/admin/users/[userId]/route.ts` will need to differentiate between `master-admin` (can edit any user) and `broker-admin` (can only edit users linked to their org/accounts). This is precisely where the role check within the API route handler or server action is paramount.
 
 ```sh
 hubble-nextjs/
@@ -92,22 +89,23 @@ hubble-nextjs/
 |     │   │   ├── login/page.tsx
 |     │   │   ├── register/page.tsx
 |     │   │   └── confirm/page.tsx
-|     │   ├── (user)/                                          # User dashboard
+|     │   ├── (user)/                                       # User dashboard
 |     │   │   ├── dashboard/
-|     │   │   │   ├── documents/page.tsx                       # statements, uploaded docs, contracts, etc
+|     │   │   │   ├── files/page.tsx                    # statements, uploaded docs, contracts, etc
 |     │   │   │   ├── loan-applications/
-|     │   │   │   │   ├── [id]/                                # wizard steps after creating new loan application
-|     │   │   │   │   │   ├── apply/page.tsx
-|     │   │   │   │   │   ├── personal-info/page.tsx
-|     │   │   │   │   │   ├── contract/page.tsx
-|     │   │   │   │   │   ├── submit/page.tsx
-|     │   │   │   │   │   ├── terms/page.tsx
+|     │   │   │   │   ├── [id]/                             # wizard steps after creating new loan application
+|     │   │   │   │   │   ├── apply/page.tsx                # Start new application + upload documents
+|     │   │   │   │   │   ├── personal-info/page.tsx        # Review parsed data
+|     │   │   │   │   │   ├── contract/page.tsx             # Choose loan terms
+|     │   │   │   │   │   ├── submit/page.tsx               # Final submission
+|     │   │   │   │   │   ├── sign/page.tsx                 # Sign documents
+|     │   │   │   │   │   ├── terms/page.tsx                # Loan Disclaimer
 |     │   │   │   │   │   ├── success/page.tsx
 |     │   │   │   │   ├── layout.tsx                        # List loan applications
 |     │   │   │   │   └── page.tsx                          # View existing loan app
 |     │   │   │   ├── profile/page.tsx
 |     │   │   │   ├── layout.tsx
-|     │   │   │   └── page.tsx
+|     │   │   │   └── page.tsx                              # View all loans + applications
 |     │   ├── (admin)/                                      # Admin dashboard
 |     │   │   ├── dashboard/
 |     │   │   │   ├── accounts/
@@ -117,12 +115,19 @@ hubble-nextjs/
 |     │   │   │   │   ├── page.tsx
 |     │   │   │   │   └── [id]/page.tsx
 |     │   │   │   ├── loans/
-|     │   │   │   │   ├── page.tsx
+|     │   │   │   │   ├── page.tsx           # See all active loans
 |     │   │   │   │   └── [id]/page.tsx
+|     │   │   │   ├── loan-applications/
+|     │   │   │   │   ├── page.tsx           # See all loan applications in progress
+|     │   │   │   │   ├── pending/
+|     │   │   │   │   │   └── [id]/page.tsx  # Manually approve or reject specific application
 |     │   │   │   ├── users/
+|     │   │   │   │   ├── page.tsx          # User management
+|     │   │   │   │   └── [id]/page.tsx     # User detail
+|     │   │   │   ├── settings
 |     │   │   │   │   ├── page.tsx
-|     │   │   │   │   └── [id]/page.tsx
-|     │   │   │   ├── settings/page.tsx
+|     │   │   │   │   └── approval/
+|     │   │   │   │   │   └── page.tsx      # Update approval terms page
 |     │   │   │   ├── layout.tsx
 |     │   │   │   └── page.tsx
 |     │   ├── globals.css                   # Global styles
@@ -195,7 +200,7 @@ hubble-nextjs/
 |     │   │   │   ├── user/                          # User workflow components
 |     │   │   │   │   ├── ApplicationWizard.tsx      # Multi-step wizard keeping track of status across prcoess
 |     │   │   │   │   ├── DocumentUploader.tsx       # Document upload UI
-|     │   │   │   │   ├── PersonalInfoForm.tsx       # review Personal details from parsing
+|     │   │   │   │   ├── DataReviewForm.tsx       # review Personal details from parsing
 |     │   │   │   │   ├── ApplicationSummary.tsx     # Pre-submission coontract review
 |     │   │   │   │   ├── SigningInterface.tsx       # SignWell integration
 |     │   │   │   │   ├── ApplicationList.tsx        # User's applications on dashboard
@@ -223,16 +228,16 @@ hubble-nextjs/
 |     │   │   ├── types.ts
 |     │   │   ├── validation.ts
 |     │   │   └── index.ts
-|     │   ├── documents/                               # Generic document management (viewing, uploading, parsing)
+|     │   ├── files/                               # Generic document management (viewing, uploading, parsing)
 |     │   │   ├── components/
+|     │   │   │   ├── DocumentUploader.tsx             # Document upload UI
 |     │   │   │   ├── DocumentViewer.tsx
-|     │   │   │   ├── DocumentUploader.tsx
 |     │   │   │   └── DocumentList.tsx
 |     │   │   └── hooks/
 |     │   │   │   ├── useDocumentUpload.ts
 |     │   │   │   └── useDocumentParsing.ts
 |     │   │   ├── hooks/
-|     │   │   ├── client.ts
+|     │   │   ├── client.ts                    # Handles integration with CharonAPI and OpenAI
 |     │   │   ├── types.ts
 |     │   │   ├── validation.ts
 |     │   │   └── index.ts
@@ -250,24 +255,26 @@ hubble-nextjs/
 |     │   │   └── index.ts
 |     │
 |     ├── actions/                  # Server-side functions for handling form submissions and data mutations -> Essentially a remote procedure call from the client to the server, under the hood making a POST request
-|     │   ├── user/
-|     │   │   ├── profile/                   # Invokes /auth domain client to post to Charon
-|     │   │   │   ├── manage-user.ts         # User profile updates form
-|     │   │   │   └── create-user.ts         # Create account form
+|     │   ├── auth/                        # Invokes /auth domain client to post to Charon
+|     │   │   ├── user/
+|     │   │   │   ├── login.ts               # User login form
+|     │   │   │   ├── register.ts            # Create account form
+|     │   │   │   └── update.ts              # User profile updates form
 |     │   ├── users/
 |     │   │   └── admin/
 |     │   │       └── manage-users.ts         # Admin user management form
 |     │   │   │   └── create-user.ts          # Create user form by admin
 |     │   ├── accounts/
 |     │   │   └── admin/
-|     │   │       └── manage-accounts.ts         # Admin accounts management form
-|     │   │   │   └── create-account.ts          # Create account form by admin
+|     │   │       ├── create-user.ts          # Create account form by admin
+|     │   │       ├── update-user.ts          # Admin accounts management form
+|     │   │       └── delete-user.ts
 |     │   ├── organizations/
 |     │   │   ├── admin/
 |     │   │   │   └── manage-organizations.ts    # Organization management form
 |     │   ├── loans/
 |     │   │   ├── user/
-|     │   │       └── manage-loans.ts            # User update loans form
+|     │   │   │   └── manage-loans.ts            # User update loans form
 |     │   │   └── admin/
 |     │   │       └── manage-loans.ts            # Admin loan management form
 |     │   ├── loan-applications/
@@ -283,11 +290,19 @@ hubble-nextjs/
 |     │   │   └── admin/
 |     │   │       ├── approve-application.ts       # Application approval
 |     │   │       ├── reject-application.ts        # Application rejection
-|     │   │       ├── request-info.ts              # Request additional info
-|     │   │       ├── bulk-update.ts               # Batch operations
+|     │   │       ├── request-additional-info.ts   # Request additional info
+|     │   │       ├── update-loan-terms.ts         # Batch operations
 |     │   │       └── reassign-application.ts      # Reassign to different
-|     │
-|     ├── shared/                     # Shared building blocks
+|     │   ├── files/
+|     │   │   ├── upload-documents.ts
+|     │   │   ├── parse-document.ts
+|     │   │   ├── validate-parsing.ts
+|     │   ├── signing/
+|     │   │   ├── initiate-signing.ts
+|     │   │   ├── complete-signing.ts
+|     │   │   ├── cancel-signing.ts
+|     │   │
+|     ├── shared/                         # Shared building blocks
 |     │   ├── components/                 # Higher-order reusable components
 |     │   │   ├── ui/                     # Reusable low-level UI (auto-generated by shadcn installs)
 |     │   │   │   ├── button.tsx
@@ -302,14 +317,14 @@ hubble-nextjs/
 |     │   │   │   ├── form.tsx
 |     │   │   │   ├── table.tsx
 |     │   │   │   └── ...
+|     │   │   ├── layout/                     # Reusable low-level UI (auto-generated by shadcn installs)
+|     │   │   │   ├── Header.tsx                 # App header
+|     │   │   │   ├── UserSidebar.tsx            # User dashboard navigation
+|     │   │   │   ├── AdminSidebar.tsx           # Admin dashboard navigation
+|     │   │   │   └── Footer.tsx                 # Page footer
 |     │   │   ├── ErrorBoundary.tsx          # Error behavior for catching client-side React errors
 |     │   │   ├── LoadingSpinner.tsx         # Suspense loading spinner
 |     │   │   └── FileDropzone.tsx           # Documents dropzone for upload
-|     │   ├── layout/                        # Shared layout components
-|     │   │   ├── Header.tsx                 # App header
-|     │   │   ├── UserSidebar.tsx            # User dashboard navigation
-|     │   │   ├── AdminSidebar.tsx           # Admin dashboard navigation
-|     │   │   └── Footer.tsx                 # Page footer
 |     │   ├── hooks/                         # Generic, reusable React hooks
 |     │   │   ├── useDebounce.ts
 |     │   │   ├── useLocalStorage.ts
@@ -421,104 +436,344 @@ Proxy routes wrap domain clients; domain clients wrap external APIs; frontend ca
 
 ### **Overall Flow**
 
-1. **Frontend** makes API requests to **Next.js API routes** (proxies).
-2. **Proxies** authenticate the user, validate tokens, and call **domain clients** for business logic.
-3. **Domain clients** interact with the **backend** or **external APIs** (e.g., Charon) to fetch/modify data.
+1. **Frontend** makes API requests to **domainClients.method()** which then call the **Next.js API routes** (proxies).
+2. **Proxies** then call the **charonClient.domain.method()** which is extended off `apiClient` and has the accessToken for authnetication.
+3. **charonClient** interacts with the **backend** or **external APIs** (e.g., Charon) to fetch/modify data.
 4. **Proxies** return sanitized, non-sensitive data to the frontend.
 
-### 1. Clone and Install
+for most mutations (like creating a loan application, updating an account, deleting a file), the flow is: Client Component → Server Action → Domain Client → Charon Client → Charon API
 
-```bash
-cd playground
-npm install
+The Auth exception: The login part of authentication is the primary exception. Your authClient.login() calls signIn(), which internally triggers Auth.js's server-side authorize callback, and that callback calls your Charon API. So it's still "client-initiated, server-executed," but Auth.js is the intermediary server layer that decides how to call Charon for authentication.
+
+# Business Logic & Data Transformation Placement Guide
+
+## 1. Proxy API Routes (PRIMARY BUSINESS LOGIC LAYER)
+
+**What Goes Here:**
+
+- ✅ Core business logic and validation
+- ✅ Data transformation between Charon API and your frontend
+- ✅ Role-based data filtering and permissions
+- ✅ Complex query building
+- ✅ Complex calculations (risk scores, eligibility checks)
+- ✅ Business rules enforcement
+- ✅ Error handling and standardization
+- ✅ Caching logic
+- ✅ Audit logging
+
+### Example:
+
+```ts
+// app/api/proxy/loan-applications/route.ts
+export async function GET(request: Request) {
+  const userRole = request.headers.get('x-user-role') as UserRole;
+  const userId = request.headers.get('x-user-id');
+  const { searchParams } = new URL(request.url);
+
+  try {
+    // 1. BUSINESS LOGIC: Role-based access control
+    const allowedStatuses = getRoleBasedStatuses(userRole);
+
+    // 2. DATA TRANSFORMATION: Build query parameters
+    const charonQuery = {
+      ...Object.fromEntries(searchParams),
+      statuses: allowedStatuses,
+      ...(userRole === 'balance_sheet_admin' && {
+        organizationId: await getUserOrganization(userId),
+      }),
+    };
+
+    // 3. BUSINESS LOGIC: Fetch from Charon
+    const charonResponse = await charonClient.loanApplications.getAll(charonQuery);
+
+    // 4. DATA TRANSFORMATION: Transform for frontend consumption
+    const transformedData = charonResponse.data.map((app) => ({
+      ...app,
+      displayStatus: getDisplayStatus(app.status),
+      canEdit: canUserEditApplication(userRole, app, userId),
+      riskScore: calculateRiskScore(app),
+      formattedAmounts: formatCurrencyAmounts(app),
+    }));
+
+    // 5. BUSINESS LOGIC: Apply additional filtering
+    const filteredData = applyBusinessRules(transformedData, userRole);
+
+    return NextResponse.json({
+      success: true,
+      data: filteredData,
+      meta: {
+        total: charonResponse.count,
+        userPermissions: getUserPermissions(userRole),
+      },
+    });
+  } catch (error) {
+    // 6. ERROR HANDLING: Standardize errors
+    return handleProxyError(error);
+  }
+}
+
+// BUSINESS LOGIC FUNCTIONS (in imported utils)
+function getRoleBasedStatuses(role: UserRole): string[] {
+  switch (role) {
+    case 'master_admin':
+      return ['draft', 'pending', 'approved', 'declined'];
+    case 'balance_sheet_admin':
+      return ['pending', 'approved'];
+    case 'fund':
+      return ['approved'];
+    case 'user':
+      return ['draft', 'pending'];
+  }
+}
+
+function calculateRiskScore(application: LoanApplication): number {
+  // Complex business calculation
+  const incomeRatio = application.loanAmount / application.incomeTotalAmount;
+  const assetRatio = application.loanAmount / application.assetTotalValue;
+  // ... more complex logic
+  return Math.min(100, incomeRatio * 40 + assetRatio * 30 + 30);
+}
 ```
 
-### 2. Environment Configuration
+## 2. Server Actions (FORM-SPECIFIC BUSINESS LOGIC)
 
-Create `.env.local` with the following variables:
+**What Goes Here:**
 
-```bash
-# App Configuration
-NODE_ENV=development
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
+- ✅ Form validation and sanitization
+- ✅ Multi-step form orchestration
+- ✅ File upload processing
+- ✅ Form-specific business rules
+- ✅ Revalidation and cache invalidation
 
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/fintech_db
+### Example:
 
-# AWS Cognito Authentication
-AUTH_COGNITO_ID=your-cognito-client-id
-AUTH_COGNITO_SECRET=your-cognito-client-secret
-AUTH_COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxxx
+```typescript
+// actions/loan-applications/user/submit-application.ts
+export async function submitApplicationAction(applicationId: string, formData: FormData) {
+  try {
+    // 1. FORM VALIDATION: Validate submission data
+    const validatedData = await validateSubmissionForm(formData);
 
-# AWS S3 Configuration
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-S3_BUCKET_NAME=your-s3-bucket-name
+    // 2. BUSINESS LOGIC: Check if user can submit
+    const application = await fetch(`/api/proxy/loan-applications/${applicationId}`).then((r) => r.json());
 
-# External APIs
-CHARON_API_URL=http://localhost:8000/api
-CHARON_API_KEY=your-charon-api-key
-OPENAI_API_KEY=your-openai-api-key
+    if (!canUserSubmitApplication(application)) {
+      return { error: 'Application cannot be submitted in current state' };
+    }
 
-# SignWell Integration
-SIGNWELL_API_KEY=your-signwell-api-key
-SIGNWELL_WEBHOOK_SECRET=your-signwell-webhook-secret
+    // 3. ORCHESTRATION: Multi-step submission process
+    const submissionSteps = [
+      () => validateRequiredDocuments(applicationId),
+      () => performFinalCalculations(validatedData),
+      () => updateApplicationStatus(applicationId, 'pending'),
+      () => notifyReviewers(applicationId),
+      () => logSubmissionEvent(applicationId),
+    ];
 
-# Email Service
-EMAIL_FROM=noreply@yourfintech.com
-SENDGRID_API_KEY=your-sendgrid-api-key
+    for (const step of submissionSteps) {
+      await step();
+    }
 
-# Security
-ENCRYPTION_KEY=your-32-character-encryption-key
-JWT_SECRET=your-jwt-secret
+    // 4. CACHE INVALIDATION
+    revalidatePath('/dashboard/loan-applications');
+    revalidateTag(`loan-application-${applicationId}`);
+
+    return { success: true, message: 'Application submitted successfully' };
+  } catch (error) {
+    return { error: 'Failed to submit application' };
+  }
+}
 ```
 
-### 3. Database Setup
+## 4. Hooks (UI STATE & DATA FETCHING)
 
-```bash
-# Generate database schema
-npm run db:generate
+**What Goes Here:**
 
-# Run migrations
-npm run db:migrate
+- ✅ Data fetching and caching
+- ✅ UI state management
+- ✅ Loading and error states
+- ✅ Optimistic updates
+- ❌ NO business logic
+- ❌ NO data transformation
 
-# Optional: Open database studio
-npm run db:studio
+### Example:
+
+```typescript
+// domains/loan-applications/hooks/useApplicationData.ts
+export function useApplicationsData(filters?: LoanApplicationFilters) {
+  return useSWR(['loan-applications', filters], () => loanApplicationsClient.getAll(filters), {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000, // 1 minute
+  });
+}
+
+export function useApplicationForm(applicationId?: string) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const submitApplication = async (formData: FormData) => {
+    setIsSubmitting(true);
+    try {
+      const result = await submitApplicationAction(applicationId!, formData);
+      if (result.error) {
+        setErrors({ submit: result.error });
+      } else {
+        // Handle success
+        toast.success('Application submitted successfully');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { submitApplication, isSubmitting, errors };
+}
 ```
 
-### 4. Development
+## 5. Components (PRESENTATION & UI LOGIC)
 
-```bash
-# Start development server
-npm run dev
+**What Goes Here:**
 
-# Run type checking
-npm run type-check
+- ✅ UI rendering and interaction
+- ✅ Form state management
+- ✅ Event handling
+- ✅ Client-side validation (UX only)
+- ❌ NO business logic
+- ❌ NO API calls (use hooks)
 
-# Run linting
-npm run lint
+### Example:
 
-# Run tests
-npm run test
+```typescript
+// domains/loan-applications/components/ApplicationList.tsx
+export function ApplicationList({ filters }: { filters?: LoanApplicationFilters }) {
+  // DATA: Use hooks for data fetching
+  const { data, error, isLoading } = useApplicationsData(filters);
+
+  // UI STATE: Local component state
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'createdAt', direction: 'desc' });
+
+  // EVENT HANDLERS: UI interactions
+  const handleSort = (field: string) => {
+    setSortConfig((prev) => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+
+  // PRESENTATION: Render UI
+  return (
+    <div>
+      {data?.applications.map((app) => (
+        <ApplicationCard
+          key={app.id}
+          application={app}
+          canEdit={app.canEdit} // Business logic already applied in proxy
+          onSelect={() => handleSelect(app.id)}
+        />
+      ))}
+    </div>
+  );
+}
 ```
 
-## 🔐 Authentication & Authorization
+## 6. Shared Utils (PURE FUNCTIONS)
 
-### AWS Cognito Setup
+**What Goes Here:**
 
-1. **Create User Pool**:
+- ✅ Reusable business calculations
+- ✅ Data formatting functions
+- ✅ Validation helpers
+- ✅ Pure transformation functions
 
-   - Enable email sign-in
-   - Configure password policies
-   - Set up user groups: `user`, `admin`, `super_admin`
+### Example:
 
-2. **Create App Client**:
+```typescript
+// shared/utils/loan-calculations.ts
+export function calculateRiskScore(application: LoanApplication): number {
+  // Pure business logic function
+  if (!application.incomeTotalAmount || !application.assetTotalValue) return 0;
 
-   - Enable OAuth flows
-   - Configure callback URLs
-   - Generate client ID and secret
+  const incomeRatio = application.loanAmount / application.incomeTotalAmount;
+  const assetRatio = application.loanAmount / application.assetTotalValue;
+  const employmentMultiplier = getEmploymentMultiplier(application.employmentStatus);
+
+  return Math.min(100, incomeRatio * 40 + assetRatio * 30 + employmentMultiplier);
+}
+
+export function formatLoanAmount(amount: number, currency: string): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+  }).format(amount);
+}
+```
+
+## Summary: The Logic Flow
+
+```
+1. Component triggers action
+2. if form, server action calls charonClient...
+3. else a hook calls Domain Client
+4. domainClient calls local Proxy API Route
+5. Proxy Route applies business logic & calls CharonClient
+6. CharonClient calls real external backend API endpoint
+7. Proxy Route transforms CharonClient response
+8. Transformed response is sent back to the domainClient
+9. domainClient returns typed response to hook
+10. Hook manages state & caching
+11. Component renders UI from hook
+```
+
+**Key Principle**: Keep business logic server-side in proxy routes, keep components thin and focused on presentation.
+
+# Next.js Fintech App Architecture Recommendations
+
+## 1. Data Flow Pattern (RECOMMENDED)
+
+**Use this flow**: Client Components → Proxy API Routes → Charon API
+
+### Why This Pattern?
+
+- **Security**: Never expose Charon API keys/tokens to the client
+- **Flexibility**: Can add caching, rate limiting, request transformation
+- **Error Handling**: Centralized error handling and logging
+- **Token Management**: Server-side token refresh/management
+
+### Flow Structure:
+
+```
+Client Component → Domain Client → Proxy API Route → Charon Client → Charon API
+```
+
+## 2. Server Actions vs Proxy Routes
+
+### Use Server Actions For:
+
+- ✅ Form submissions with validation
+- ✅ Simple CRUD operations
+- ✅ Operations that don't need complex error handling
+- ✅ When you want automatic progressive enhancement
+
+### Use Proxy Routes For:
+
+- ✅ Complex data fetching with query parameters
+- ✅ File uploads/downloads
+- ✅ Operations needing detailed error responses
+- ✅ When you need custom headers/status codes
+- ✅ Real-time operations
+
+### Split:
+
+- **Proxy Routes**: All GET operations, file operations, complex queries
+- **Server Actions**: POST/PATCH/DELETE for forms, simple mutations
+
+## 4. Permission Management Strategy
+
+### Role-Based Access Control (RBAC) Implementation:
 
 3. **Configure Groups**:
    ```json
@@ -615,83 +870,3 @@ npm run test
    - Final approval
    - Notification to user
    - Archive and compliance
-
-## 🎨 UI/UX Features
-
-### Design System
-
-- **Consistent Color Palette** with light/dark mode support
-- **Typography Scale** with Inter font family
-- **Component Library** with Radix UI primitives
-- **Animation System** with smooth transitions
-- **Responsive Grid** with mobile-first approach
-
-### User Experience
-
-- **Progressive Disclosure** for complex workflows
-- **Real-time Feedback** with loading states
-- **Error Handling** with clear messaging
-- **Accessibility** WCAG 2.1 AA compliance
-- **Performance** optimized for Core Web Vitals
-
-## 📊 Monitoring & Analytics
-
-### Logging
-
-- **Structured Logging** with Winston
-- **Domain-specific Loggers** for better organization
-- **Security Audit Trails** for compliance
-- **Performance Monitoring** for optimization
-
-### Analytics
-
-- **User Behavior Tracking** (privacy-compliant)
-- **Application Metrics** and conversion rates
-- **System Performance** monitoring
-- **Business Intelligence** dashboards
-
-## 🔒 Security Features
-
-### Data Protection
-
-- **End-to-end Encryption** for sensitive data
-- **Secure File Storage** with AWS S3
-- **Input Validation** with Zod schemas
-
-### Authentication Security
-
-- **Multi-factor Authentication** support
-- **Session Management** with secure cookies
-- **Rate Limiting** to prevent abuse
-- **CSRF Protection** built-in
-
-### Compliance
-
-- **GDPR Compliance** with data portability
-- **SOC 2 Type II** security controls
-- **PCI DSS** for payment data (if applicable)
-- **Audit Logging** for regulatory requirements
-
-### Code Standards
-
-- **TypeScript** strict mode enabled
-- **ESLint** with Next.js configuration
-- **Prettier** for code formatting
-- **Conventional Commits** for git messages
-
-## 📝 API Documentation
-
-### RESTful Endpoints
-
-- `GET /api/users` - User management
-- `POST /api/loan-applications` - Create application
-- `PUT /api/loan-applications/:id` - Update application
-- `POST /api/documents/upload` - Upload documents
-- `POST /api/signing/initiate` - Start signing process
-
-### Server Actions
-
-- `createLoanApplication()` - Server-side application creation
-- `uploadDocument()` - Secure file upload
-- `approveApplication()` - Admin approval workflow
-- `generateReport()` - Analytics and reporting

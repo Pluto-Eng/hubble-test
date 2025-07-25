@@ -1,4 +1,3 @@
-import { auth } from '@/auth';
 import type { SuccessResponse, ErrorResponse } from '@/lib/charon-client/generated'; // adjust path
 
 //base api client to be extended upon by charon api client and other domain api clients
@@ -8,35 +7,33 @@ type ResultWrapper<T, E = ErrorResponse> = {
 };
 
 export class ApiClient {
+  protected accessToken?: string;
+
   constructor(
     private readonly instanceName: string, //name of the instance, e.g. "charonClient", "authClient"
     private readonly baseUrl: string,
     private readonly defaultHeaders: Record<string, string> = {}
   ) {}
 
+  // In Auth.js v5, tokens are stored in JWT (server-side only)
+  // Access token directly from auth() not session, (stored in JWT callback)
+  public setAccessToken(token: string) {
+    this.accessToken = token;
+  }
+
   private async injectAuthHeaders(options: RequestInit = {}) {
     // Prepare headers
     const headers: Record<string, string> = {
       ...this.defaultHeaders,
+      ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
       'Content-Type': (options.headers as Record<string, string>)?.['content-type'] ?? 'application/json',
       ...(options.headers as Record<string, string>),
     };
 
-    // In Auth.js v5, tokens are stored in JWT (server-side only)
-    // Access token directly from auth() not session, (stored in JWT callback)
-
-    const cookieStore = await cookies();
-    const token = await auth();
-    const accessToken = token?.user?.accessToken || cookieStore.get('accessToken')?.value;
-
-    if (!accessToken) {
+    if (!this.accessToken) {
       log.error('ApiClient', 'No access token found');
-    }
-
-    log.debug('ApiClient', 'Access token from cookies', accessToken);
-
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
+    } else {
+      log.debug('ApiClient', 'Access token from setAccessToken', { accessToken: this.accessToken });
     }
 
     return {

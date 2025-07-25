@@ -5,6 +5,15 @@ import { charonClient } from '@/lib/charon-client/charon-client';
 import '@/domains/auth';
 import { User } from 'next-auth';
 import { UserType } from '@/domains/auth/types';
+import { env } from '@/lib/config';
+import { log } from '@/lib/logger';
+
+// Handle SSL for development environment with external API calls
+if (env === 'development') {
+  // Disable SSL verification for external API calls only
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // to avoid "self signed certificate" errors like UNABLE_TO_VERIFY_LEAF_SIGNATURE
+  log.info('Auth', 'Development mode: SSL verification disabled for external APIs');
+}
 
 export default {
   providers: [
@@ -77,6 +86,7 @@ export default {
 
           log.start('Auth', 'Calling charonClient.getProfile', { accessToken });
 
+          charonClient.setAccessToken(accessToken);
           const profileResponse = await charonClient.user.getProfile();
 
           log.info('Auth', 'Charon profile response', {

@@ -1,5 +1,5 @@
-import { ApiClient } from '@/lib/api-client';
 import { api } from '@/lib/config';
+import { ApiClient } from '@/lib/api-client';
 import { AuthClient } from '@/domains/auth/client';
 import { UserClient } from '@/domains/user/client';
 import { UsersClient } from '@/domains/users/client';
@@ -12,9 +12,7 @@ import { LoansClient } from '@/domains/loans/client';
 import { FilesClient } from '@/domains/files/client';
 import { SigningClient } from '@/domains/signing/client';
 
-export class CharonClient {
-  private api: ApiClient;
-
+export class CharonClient extends ApiClient {
   auth: AuthClient;
   user: UserClient;
   account: AccountsClient;
@@ -28,7 +26,8 @@ export class CharonClient {
   signing: SigningClient;
 
   constructor() {
-    // this.api = new ApiClient('charonClient', api.baseUrl);
+    // reminder: extended classes inherit the methods, but they do not share state. Each one has its own instance of accessToken, because each one is a separate object in memory
+    super('charonClient', api.baseUrl);
 
     this.auth = new AuthClient(api.baseUrl);
     this.user = new UserClient(api.baseUrl);
@@ -41,6 +40,25 @@ export class CharonClient {
     this.loans = new LoansClient(api.baseUrl);
     this.files = new FilesClient(api.baseUrl);
     this.signing = new SigningClient(api.baseUrl);
+  }
+
+  override setAccessToken(token: string) {
+    super.setAccessToken(token);
+    for (const client of [
+      this.auth,
+      this.user,
+      this.users,
+      this.account,
+      this.organizations,
+      this.loanApplication,
+      this.loanAssets,
+      this.loanIncomes,
+      this.loans,
+      this.files,
+      this.signing,
+    ]) {
+      client.setAccessToken?.(token);
+    }
   }
 }
 

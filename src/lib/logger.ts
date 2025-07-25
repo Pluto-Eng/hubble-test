@@ -1,4 +1,4 @@
-import { enable } from '@/lib/config';
+import { env, enable } from '@/lib/config';
 
 export type shouldLog = (level: string) => boolean;
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'log' | 'dir' | 'trace' | 'table';
@@ -24,6 +24,7 @@ export interface Logger {
   middleware: LoggerFn;
 }
 
+// ANSI colors for server/terminal
 const red = '\x1b[38;2;240;100;100m';
 const pink = '\x1b[38;2;255;105;180m';
 const blushPink = '\x1b[38;2;255;182;193m';
@@ -42,13 +43,29 @@ const italic = '\x1b[3m';
 const underline = '\x1b[4m';
 const reset = '\x1b[0m';
 
+// CSS colors for browser
+const browserColorMap = {
+  [pink]: 'color: #ff69b4; font-weight: bold; text-decoration: underline;',
+  [green]: 'color: #50c878; font-weight: bold;',
+  [red]: 'color: #f06464; font-weight: bold;',
+  [yellow]: 'color: #ffd700; font-style: italic;',
+  [blushPink]: 'color: #ffb6c1;',
+  [powderBlue]: 'color: #b0e0e6;',
+  [blue]: 'color: #4a90e2;',
+  [lavenderMist]: 'color: #e6e6fa;',
+  [lavender]: 'color: #d8bfd8; font-style: italic;',
+  [purple]: 'color: #b48cff;',
+  [lightGray]: 'color: #b4b4b4;',
+  [whiteSmoke]: 'color: #f5f5f5;',
+};
+
 const isBrowser = typeof window !== 'undefined';
 
 const shouldLog: shouldLog = (level) => {
   // if (!enable.logging) return false;
   if (!enable.logging) return ['error', 'warn'].includes(level);
   else {
-    // Immediate global setup for all environments
+    // Setup global logs for all environments immediately
     (() => {
       if (typeof globalThis !== 'undefined') globalThis.log = log;
       if (typeof window !== 'undefined') (window as any).log = log;
@@ -59,20 +76,22 @@ const shouldLog: shouldLog = (level) => {
   }
 };
 
-const inspectObject = async (obj: any) => {
+const inspectObject = async (obj: unknown): Promise<any> => {
   if (isBrowser) {
+    // ALWAYS return raw object for browser display
+    // Even if running on server, the logs might be forwarded to browser
     return obj; // browser devtools handle expansion natively
   } else {
     // Dynamically require util only on server to avoid bundling in client
-    // Using require here because top-level import breaks client bundle
-    // You can also do dynamic import but require is simpler in Node context
+    //     // Using require here because top-level import breaks client bundle
+    //     // You can also do dynamic import but require is simpler in Node context
     const util = await import('util');
     return util.inspect(obj, { depth: null, colors: true, compact: false });
   }
 };
 
 const logFn: LogFn = (level, emoji, color = '', style1 = '', style2 = '') => {
-  return (...messages) => {
+  return async (...messages) => {
     if (!shouldLog(level)) return;
 
     const [scope, msg, ...args] = messages;
@@ -84,7 +103,9 @@ const logFn: LogFn = (level, emoji, color = '', style1 = '', style2 = '') => {
 
     const content = !msg ? `${prefix}` : isBrowser ? `${prefix} ${msg}` : `${prefix} ${msg}${reset}:`;
 
-    const expandedArgs = args.map((arg) => (typeof arg === 'object' && arg !== null ? inspectObject(arg) : arg));
+    const expandedArgs = await Promise.all(
+      args.map((arg) => (typeof arg === 'object' && arg !== null ? inspectObject(arg) : arg))
+    );
 
     (console as any)[level](`${emoji}`, `${content}`, ...expandedArgs);
 

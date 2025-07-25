@@ -1,11 +1,26 @@
 import { auth } from '@/auth';
 import { NextAuthRequest } from 'next-auth';
+import { log } from '@/lib/logger';
 
 export default auth((req: NextAuthRequest) => {
   const { pathname } = req.nextUrl;
-  const isLoggedIn = !!req.auth;
+  const isLoggedIn = !!req.auth && !req.auth?.error;
+
   log.start('Middleware', 'Checking path', pathname);
-  log.info('Middleware', 'Auth', req.auth);
+  log.info('Middleware', 'Auth', {
+    user: req.auth?.user
+      ? {
+          id: req.auth.user.id,
+          name: req.auth.user.name, //auth.js user obj
+          email: req.auth.user.email,
+          type: req.auth.user.type,
+          image: req.auth.user.image,
+        }
+      : null,
+    expires: req.auth?.expires,
+    error: req.auth?.error,
+    isLoggedIn,
+  });
 
   if (isLoggedIn) {
     log.success('Middleware', 'Session found');

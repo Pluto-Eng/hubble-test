@@ -105,6 +105,6 @@ export const {
     },
   },
 
-  debug: enable.logging,
+  debug: enable.logging && typeof window === 'undefined', // Only debug on server, never in browser
   ...authConfig,
 });

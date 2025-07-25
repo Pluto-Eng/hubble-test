@@ -1,30 +1,31 @@
 // Loan Applications API client
-import { BaseApiClient } from '../../shared/api';
+import { ApiClient } from '@/lib/api-client';
 import { LoanApplication, CreateLoanApplicationRequest } from './types';
 
-export class LoanApplicationsClient extends BaseApiClient {
-  constructor(accountId: string, authToken?: string) {
-    super(`/accounts/${accountId}/loan-applications`, authToken);
+export class LoanApplicationsClient extends ApiClient {
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('loan-applications', baseUrl);
   }
 
-  async getApplications(params?: any): Promise<LoanApplication[]> {
-    const response = await this.getAll<LoanApplication>(params);
-    return response.data;
+  async getApplications() {
+    return this.get<LoanApplication>('/loan-applications');
   }
 
-  async getApplication(id: string): Promise<LoanApplication> {
-    return this.getById<LoanApplication>(id);
+  async getApplication(id: string) {
+    return this.get<LoanApplication>(`/loan-applications/${id}`);
   }
 
-  async createApplication(data: CreateLoanApplicationRequest): Promise<LoanApplication> {
-    return this.create<LoanApplication>(data);
+  async createApplication(data: CreateLoanApplicationRequest) {
+    return this.post<LoanApplication>(`/loan-applications`, data);
   }
 
-  async updateApplication(id: string, data: Partial<CreateLoanApplicationRequest>): Promise<LoanApplication> {
-    return this.update<LoanApplication>(id, data);
+  async updateApplication(id: string, data: Partial<CreateLoanApplicationRequest>) {
+    return this.put<LoanApplication>(`/loan-applications/${id}`, data);
   }
 
-  async deleteApplication(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteApplication(id: string) {
+    return this.delete(`/loan-applications/${id}`);
   }
-} 
+}
+
+export const loanApplicationsClient = new LoanApplicationsClient();

@@ -1,75 +1,37 @@
 // Files API client
 import { ApiClient } from '@/lib/api-client';
-import { FileRef, UploadFileRequest, UpdateFileRequest } from './types';
+import { FileRef, UploadFileRequest, UpdateFileMetadataRequest } from './types';
 
 export class FilesClient extends ApiClient {
-  constructor(accountId: string, documentableId: string, authToken?: string) {
-    super('files', `/accounts/${accountId}/loan-applications/${documentableId}/files`, authToken);
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('files', baseUrl);
   }
 
-  async getFiles(params?: any): Promise<FileRef[]> {
-    const response = await this.getAll<FileRef>(params);
-    return response.data;
+  async getFiles() {
+    return this.get<FileRef>('/files');
   }
 
-  async getFile(id: string): Promise<FileRef> {
-    return this.getById<FileRef>(id);
+  async getFile(accountId: string, documentableId: string, id: string) {
+    return this.get<FileRef>(`/files/${accountId}/${documentableId}/${id}`);
   }
 
-  async uploadFile(data: UploadFileRequest): Promise<FileRef> {
-    const formData = new FormData();
-    formData.append('document', data.document);
-    formData.append('documentType', data.documentType);
-
-    const authToken = await this.getAuthToken();
-    const headers: Record<string, string> = {};
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`;
-    }
-
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-
-    const responseData = await response.json();
-    if (!response.ok) {
-      throw this.handleError(responseData);
-    }
-    return responseData.data;
+  async uploadFiles(data: UploadFileRequest) {
+    //multipart/form-data
+    return this.post<FileRef>('/files', data);
   }
 
-  async updateFile(id: string, data: UpdateFileRequest): Promise<FileRef> {
-    return this.update<FileRef>(id, data);
+  async updateFile(accountId: string, documentableId: string, id: string, data: UpdateFileMetadataRequest) {
+    return this.patch<FileRef>(`/files/${accountId}/${documentableId}/${id}`, data);
   }
 
-  async deleteFile(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteFile(accountId: string, documentableId: string, id: string) {
+    return this.delete(`/files/${accountId}/${documentableId}/${id}`);
   }
 
-  async downloadFile(id: string): Promise<Blob> {
-    const authToken = await this.getAuthToken();
-    const headers: Record<string, string> = {};
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}/${id}/download`, {
-      method: 'GET',
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw this.handleError(errorData);
-    }
-
-    return response.blob();
+  async downloadFile(accountId: string, documentableId: string, id: string) {
+    //application/octet-stream
+    return this.getBlob(`/files/${accountId}/${documentableId}/${id}/download`);
   }
+}
 
-  private handleError(data: any): Error {
-    const { ApiError } = require('../../shared/errors');
-    return ApiError.fromResponse(data);
-  }
-} 
+export const filesClient = new FilesClient();

@@ -1,14 +1,18 @@
 import { ApiClient } from "@/lib/api-client";
-import { api } from "@/lib/config";
+import { Profile } from "@/domains/user/types";
 
-class UserClient extends ApiClient {
-    constructor(token: string) {
-        super(api.baseUrl, token);
-    }
+export class UserClient extends ApiClient {
+  constructor(baseUrl: any = "api/proxy/") {
+    super("user", baseUrl);
+  }
 
-    async update(userId: string, data: any) {
-        return this.post(`/users/${userId}`, data);
-    }
+  async getProfile() {
+    return this.get<Profile>("/user/profile");
+  }
+
+  async updateProfile(pFields: Partial<Profile>) {
+    return this.put<Profile>("/user/profile", pFields);
+  }
 }
 
-export const userClient = new UserClient(api.baseUrl);
+export const userClient = new UserClient();

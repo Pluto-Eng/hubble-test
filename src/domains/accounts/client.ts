@@ -1,30 +1,31 @@
 // Accounts API client
 import { ApiClient } from '@/lib/api-client';
-import { Account, CreateAccountRequest, UpdateAccountRequest } from './types';
+import { Account, CreateAccountRequest } from '@/domains/accounts/types';
 
 export class AccountsClient extends ApiClient {
-  constructor(authToken?: string) {
-    super('accounts', '/accounts', authToken);
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('accounts', baseUrl);
   }
 
-  async getAccounts(params?: any): Promise<Account[]> {
-    const response = await this.getAll<Account>(params);
-    return response.data;
+  async getAccounts() {
+    return this.get<Account>('/accounts');
   }
 
-  async getAccount(id: string): Promise<Account> {
-    return this.getById<Account>(id);
+  async getAccount(id: string) {
+    return this.get<Account>(`/accounts/${id}`);
   }
 
-  async createAccount(data: CreateAccountRequest): Promise<Account> {
-    return this.create<Account>(data);
+  async createAccount(data: Partial<CreateAccountRequest>) {
+    return this.post<CreateAccountRequest>(`/accounts`, data);
   }
 
-  async updateAccount(id: string, data: UpdateAccountRequest): Promise<Account> {
-    return this.update<Account>(id, data);
+  async updateAccount(id: string, data: Partial<Account>) {
+    return this.put<Account>(`/accounts/${id}`, data);
   }
 
-  async deleteAccount(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteAccount(id: string) {
+    return this.delete(`/accounts/${id}`);
   }
-} 
+}
+
+export const accountsClient = new AccountsClient();

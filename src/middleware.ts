@@ -1,12 +1,19 @@
-import { auth } from "@/auth"
-import { NextAuthRequest } from "next-auth"
+import { auth } from '@/auth';
+import { NextAuthRequest } from 'next-auth';
 
 export default auth((req: NextAuthRequest) => {
   const { pathname } = req.nextUrl;
-  log.info('Middleware', 'Checking path', pathname);
-  log.info('Middleware', 'Auth', req.auth) //  { session: { user: { ... } } }
-})
- 
+  const isLoggedIn = !!req.auth;
+  log.start('Middleware', 'Checking path', pathname);
+  log.info('Middleware', 'Auth', req.auth);
+
+  if (isLoggedIn) {
+    log.success('Middleware', 'Session found');
+  } else {
+    log.error('Middleware', 'No session found');
+  }
+});
+
 // Optionally, don't invoke Middleware on some paths
 export const config = {
   matcher: [
@@ -17,9 +24,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)", //negative matcher pattern, only allow these go through unauthenticated
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)', //negative matcher pattern, only allow these go through unauthenticated
   ],
-}; 
+};
 
 // import { NextResponse } from 'next/server';
 // import type { NextRequest } from 'next/server';
@@ -39,7 +46,7 @@ export const config = {
 //   const { pathname } = req.nextUrl;
 //   const isLoggedIn = !!req.auth
 //   const userRole = req.auth?.user?.role
-  
+
 //   log.start('Middleware','Checking path:', pathname);
 
 //   // Check if the path is public
@@ -50,10 +57,10 @@ export const config = {
 
 //   // Check for auth token in localStorage
 //   const cookieName = 'auth_tokens';
-  
+
 //   const authTokens = req.cookies.get(cookieName);
 //   log.check('Middleware','Auth tokens cookie present ❓', !!authTokens);
-  
+
 //   if (!authTokens?.value) {
 //     log.error('Middleware', 'No auth tokens found, redirecting to login');
 //     // Redirect to login if no auth token is present
@@ -66,7 +73,7 @@ export const config = {
 //     // Parse the stored tokens
 //     const tokens = JSON.parse(authTokens.value);
 //     log.success('Middleware', 'Successfully parsed auth tokens');
-    
+
 //     // Check if the token has expired
 //     if (!tokens.accessToken) {
 //       log.error('Middleware', 'Invalid auth tokens (no accessToken), redirecting to login');
@@ -87,7 +94,6 @@ export const config = {
 //     //     return NextResponse.redirect(new URL("/login", nextUrl))
 //     //   }
 //     // }
-  
 
 //     // Add the access token to the request headers for API calls
 //     const requestHeaders = new Headers(req.headers);
@@ -106,7 +112,5 @@ export const config = {
 //     url.searchParams.set('from', pathname);
 //     return NextResponse.redirect(url);
 //   }
-  
+
 // })
-
-

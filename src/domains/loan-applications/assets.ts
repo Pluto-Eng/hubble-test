@@ -1,30 +1,31 @@
 // Loan Assets API client
-import { BaseApiClient } from '../../shared/api';
+import { ApiClient } from '@/lib/api-client';
 import { LoanAsset, CreateLoanAssetRequest } from './types';
 
-export class LoanAssetsClient extends BaseApiClient {
-  constructor(accountId: string, loanApplicationId: string, authToken?: string) {
-    super(`/accounts/${accountId}/loan-applications/${loanApplicationId}/assets`, authToken);
+export class LoanAssetsClient extends ApiClient {
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('loan-assets', baseUrl);
   }
 
-  async getAssets(params?: any): Promise<LoanAsset[]> {
-    const response = await this.getAll<LoanAsset>(params);
-    return response.data;
+  async getAssets() {
+    return this.get<LoanAsset>('/loan-assets');
   }
 
-  async getAsset(id: string): Promise<LoanAsset> {
-    return this.getById<LoanAsset>(id);
+  async getAsset(id: string) {
+    return this.get<LoanAsset>(`/loan-assets/${id}`);
   }
 
-  async createAsset(data: CreateLoanAssetRequest): Promise<LoanAsset> {
-    return this.create<LoanAsset>(data);
+  async createAsset(data: CreateLoanAssetRequest) {
+    return this.post<LoanAsset>(`/loan-assets`, data);
   }
 
-  async updateAsset(id: string, data: Partial<CreateLoanAssetRequest>): Promise<LoanAsset> {
-    return this.update<LoanAsset>(id, data);
+  async updateAsset(id: string, data: Partial<CreateLoanAssetRequest>) {
+    return this.put<LoanAsset>(`/loan-assets/${id}`, data);
   }
 
-  async deleteAsset(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteAsset(id: string) {
+    return this.delete(`/loan-assets/${id}`);
   }
-} 
+}
+
+export const loanAssetsClient = new LoanAssetsClient();

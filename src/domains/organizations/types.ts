@@ -1,25 +1,8 @@
 // Organization domain types
-import { BaseEntity } from '@/shared/types';
+import { Organization as GeneratedOrganization } from '@/lib/charon-client/generated';
 
-export interface Organization extends BaseEntity {
-  name: string;
-  type: 'admin' | 'client';
-  status: 'active' | 'suspended';
-  domain?: string;
-  contactEmail?: string;
-  contactName?: string;
-  settings?: Record<string, any>;
-  deletedAt?: string;
-}
+export interface Organization extends GeneratedOrganization {}
 
-export interface CreateOrganizationRequest {
-  name: string;
-  type: Organization['type'];
-  status?: Organization['status'];
-  domain?: string;
-  contactEmail?: string;
-  contactName?: string;
-  settings?: Record<string, any>;
-}
+export interface CreateOrganizationRequest extends Partial<Organization> {}
 
-export interface UpdateOrganizationRequest extends Partial<CreateOrganizationRequest> {} 
+export interface UpdateOrganizationRequest extends Partial<Organization> {}

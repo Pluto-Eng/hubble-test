@@ -1,35 +1,11 @@
-import { auth } from "@/auth"
-import { cookies } from "next/headers"
+import { auth } from '@/auth';
+import type { SuccessResponse, ErrorResponse } from '@/lib/charon-client/generated'; // adjust path
 
 //base api client to be extended upon by charon api client and other domain api clients
-export interface CharonSuccessResponse<T = any> {
-  id: string;
-  message: string;
-  statusCode: number;
-  data: T;
-  count: number;
-  errors: null;
-}
-
-export interface CharonErrorResponse {
-  id: string;
-  message: string;
-  statusCode: number;
-  feedback: string;
-  errors: Record<string, string>;
-  data: null;
-}
-
-export type ApiResult<T> = {
-  id?: string;
-  message?: string;
-  statusCode?: number;
-  data?: T | null;
-  count?: number | null;
-  feedback?: string | null;
-  errors?: any;
-  success?: boolean;
-}
+type ResultWrapper<T, E = ErrorResponse> = {
+  result?: T;
+  error?: E;
+};
 
 export class ApiClient {
   constructor(
@@ -38,87 +14,121 @@ export class ApiClient {
     private readonly defaultHeaders: Record<string, string> = {}
   ) {}
 
+  private async injectAuthHeaders(options: RequestInit = {}) {
+    // Prepare headers
+    const headers: Record<string, string> = {
+      ...this.defaultHeaders,
+      'Content-Type': (options.headers as Record<string, string>)?.['content-type'] ?? 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    // In Auth.js v5, tokens are stored in JWT (server-side only)
+    // Access token directly from auth() not session, (stored in JWT callback)
+
+    const cookieStore = await cookies();
+    const token = await auth();
+    const accessToken = token?.user?.accessToken || cookieStore.get('accessToken')?.value;
+
+    if (!accessToken) {
+      log.error('ApiClient', 'No access token found');
+    }
+
+    log.debug('ApiClient', 'Access token from cookies', accessToken);
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    return {
+      ...options,
+      headers,
+    };
+  }
+
+  private async _fetch(path: string, options: RequestInit): Promise<Response> {
+    const optionsWithAuth = await this.injectAuthHeaders(options);
+    return fetch(`${this.baseUrl}${path}`, {
+      ...optionsWithAuth,
+      credentials: 'include',
+    });
+  }
+
   private async makeRequest<T>(
     path: string,
     options: RequestInit = {}
-  ): Promise<ApiResult<T>> {
+  ): Promise<ResultWrapper<SuccessResponse & { data: T }, ErrorResponse>> {
     try {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...this.defaultHeaders,
-        ...options.headers as Record<string, string>,
-      };
-
-        // In Auth.js v5, tokens are stored in JWT (server-side only)
-        // Access token directly from session (stored in JWT callback)
-      const cookieStore = await cookies();
-      const accessToken = cookieStore.get('accessToken')?.value;
-      log.debug('ApiClient', 'Access token from cookies', accessToken);
-
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        ...options,
-        headers,
-      });
-
+      const response = await this._fetch(path, options);
       const responseData = await response.json();
 
-      // Handle Charon's response format
-      if (response.ok) {
-        log.success(`${this.instanceName}`, `${this.baseUrl}${path} Success`, responseData);
-        // Success response
-        const successResponse = responseData as CharonSuccessResponse<T>;
-        const data = {
-          id: successResponse.id,
-          message: successResponse.message,
-          statusCode: successResponse.statusCode,
-          data: successResponse.data,
-          count: successResponse.count,
-          success: true,
-        }
-        
-        return {
-          id: successResponse.id,
-          message: successResponse.message,
-          statusCode: successResponse.statusCode,
-          data: successResponse.data,
-          count: successResponse.count,
-          success: true,
-          errors: null,
+      if (!response.ok) {
+        // Create a new, standard error object to avoid mutation issues.
+        const safeError = {
+          message: responseData.message || 'API request failed',
+          feedback: responseData.feedback, // Add more context
+          errors: responseData.errors, // Add more context
+          statusCode: response.status,
         };
-      } else {
-        log.error(`${this.instanceName}`, `${this.baseUrl}${path} Response Error`, responseData);
-        // Error response
-        const errorResponse = responseData as CharonErrorResponse;
-        return {
-          message: errorResponse.message,
-          statusCode: errorResponse.statusCode,
-          feedback: errorResponse.feedback,
-          errors: errorResponse.errors,
-          data: null,
-          success: false,
-        };
+
+        log.error(`${this.instanceName}`, `${this.baseUrl}${path} Response Error`, safeError);
+        return { error: responseData as ErrorResponse };
       }
+
+      log.success(`${this.instanceName}`, `${this.baseUrl}${path} Success`, responseData);
+      return { result: responseData as SuccessResponse & { data: T } };
     } catch (error) {
-      log.error(`${this.instanceName}`, `${this.baseUrl}${path} Network Error`, error);
-      // Network or parsing errors
+      const safeError = {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        timestamp: new Date().toISOString(),
+      };
+      log.error(`${this.instanceName}`, `${this.baseUrl}${path} Network Error`, safeError);
       return {
-        data: null,
-        errors: error instanceof Error ? error.message : 'Unknown error occurred',
-        statusCode: 0, // Indicates network error
+        error: { message: error instanceof Error ? error.message : 'Unknown network error' } as ErrorResponse,
       };
     }
   }
 
-  async get<T>(path: string, options: Omit<RequestInit, 'method'> = {}): Promise<ApiResult<T>> {
+  //uses private mehtod _fetch to handles Blob parsing
+  async getBlob(path: string, options: Omit<RequestInit, 'method'> = {}): Promise<ResultWrapper<Blob, ErrorResponse>> {
+    try {
+      const response = await this._fetch(path, { ...options, method: 'GET' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Download failed' }));
+        const safeError = {
+          message: errorData.message || 'Download failed',
+          feedback: errorData.feedback, // Add more context
+          errors: errorData.errors, // Add more context
+          statusCode: response.status,
+        };
+        log.error(`${this.instanceName}`, `${this.baseUrl}${path} Network Error`, safeError);
+        return { error: errorData as ErrorResponse };
+      }
+      return { result: await response.blob() };
+    } catch (error) {
+      const errorToLog = new Error(error instanceof Error ? error.message : 'Unknown network error');
+      const safeErr = {
+        error: errorToLog.message,
+        stack: errorToLog.stack,
+        timestamp: new Date().toISOString(),
+      };
+      log.error(`${this.instanceName}`, `${this.baseUrl}${path} Network Error`, safeErr);
+      return { error: { message: error instanceof Error ? error.message : 'Unknown network error' } as ErrorResponse };
+    }
+  }
+
+  async get<T>(
+    path: string,
+    options: Omit<RequestInit, 'method'> = {}
+  ): Promise<ResultWrapper<SuccessResponse & { data: T }, ErrorResponse>> {
     return this.makeRequest<T>(path, { ...options, method: 'GET' });
   }
 
-  async post<T>(path: string, body?: any, options: Omit<RequestInit, 'method' | 'body'> = {}): Promise<ApiResult<T>> {
+  async post<T>(
+    path: string,
+    body?: any,
+    options: Omit<RequestInit, 'method' | 'body'> = {}
+  ): Promise<ResultWrapper<SuccessResponse & { data: T }, ErrorResponse>> {
     return this.makeRequest<T>(path, {
       ...options,
       method: 'POST',
@@ -126,7 +136,11 @@ export class ApiClient {
     });
   }
 
-  async put<T>(path: string, body?: any, options: Omit<RequestInit, 'method' | 'body'> = {}): Promise<ApiResult<T>> {
+  async put<T>(
+    path: string,
+    body?: any,
+    options: Omit<RequestInit, 'method' | 'body'> = {}
+  ): Promise<ResultWrapper<SuccessResponse & { data: T }, ErrorResponse>> {
     return this.makeRequest<T>(path, {
       ...options,
       method: 'PUT',
@@ -134,7 +148,11 @@ export class ApiClient {
     });
   }
 
-  async patch<T>(path: string, body?: any, options: Omit<RequestInit, 'method' | 'body'> = {}): Promise<ApiResult<T>> {
+  async patch<T>(
+    path: string,
+    body?: any,
+    options: Omit<RequestInit, 'method' | 'body'> = {}
+  ): Promise<ResultWrapper<SuccessResponse & { data: T }, ErrorResponse>> {
     return this.makeRequest<T>(path, {
       ...options,
       method: 'PATCH',
@@ -142,7 +160,10 @@ export class ApiClient {
     });
   }
 
-  async delete<T>(path: string, options: Omit<RequestInit, 'method'> = {}): Promise<ApiResult<T>> {
+  async delete<T>(
+    path: string,
+    options: Omit<RequestInit, 'method'> = {}
+  ): Promise<ResultWrapper<SuccessResponse & { data: T }, ErrorResponse>> {
     return this.makeRequest<T>(path, { ...options, method: 'DELETE' });
   }
 }

@@ -1,26 +1,28 @@
 // File domain types
-import { BaseEntity } from '@/shared/types';
+import { FileRef as GeneratedFileRef } from '@/lib/charon-client/generated';
 
-export interface FileRef extends BaseEntity {
-  documentableId: string;
-  documentableType: string;
-  filename: string;
-  fileContentType: string;
-  filepath: string;
-  documentType: string;
-  status: 'pending' | 'approved' | 'rejected';
-  size: number;
-  encoding: string;
-  awsBucket: string;
-  awsKey: string;
-}
+export interface FileRef extends GeneratedFileRef {}
 
 export interface UploadFileRequest {
+  accountId: string;
+  documentableId: string; //loan application id, not account id
   document: File;
-  documentType: string;
+  documentType?: string; //W2
+  documentableType?: string; //loanAsset
+  filename?: string; //document.pdf
+  fileContentType?: string; //application/pdf
+  filepath?: string; //s3://bucket/path/to/document.pdf
+  status?: string; //processed
 }
 
-export interface UpdateFileRequest {
-  documentType?: string;
-  status?: FileRef['status'];
-} 
+export interface UpdateFileMetadataRequest {
+  id: string; //file id
+  accountId: string;
+  documentableId: string; //loan application id, not account id
+  documentableType?: string; //loanAsset
+  filename?: string; //document.pdf
+  fileContentType?: string; //application/pdf
+  filepath?: string; //s3://bucket/path/to/document.pdf
+  documentType?: string; //W2
+  status?: string; //processed
+}

@@ -1,13 +1,13 @@
 // auth.ts - Main configuration
-import NextAuth from "next-auth"
-import authConfig from "@/auth.config"
-import { env, app, enable } from "@/lib/config"
+import NextAuth from 'next-auth';
+import authConfig from '@/auth.config';
+import { env, app, enable } from '@/lib/config';
 
-export const { 
-  auth, 
-  signIn, 
+export const {
+  auth,
+  signIn,
   signOut,
-  handlers: { GET, POST }
+  handlers: { GET, POST },
 } = NextAuth({
   pages: {
     signIn: '/login',
@@ -16,7 +16,7 @@ export const {
   },
 
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
     // FINTECH SECURITY: Shorter sessions (15 minutes idle)
     maxAge: app.sessionMaxAge, // 15 minutes - but backend expiry is 24hrs
     updateAge: 5 * 60, // Update session every 5 minutes of activity
@@ -74,10 +74,10 @@ export const {
   //   },
 
   //   async signOut(message) {
-  //     const userId = 'token' in message && message.token 
-  //     ? (message.token as any).userId 
+  //     const userId = 'token' in message && message.token
+  //     ? (message.token as any).userId
   //     : 'unknown'
-    
+
   //     log.info("User signed out", {
   //       userId
   //     })
@@ -86,23 +86,25 @@ export const {
 
   logger: {
     error(error: Error) {
-      log.error('Auth.js Error', '', {
+      const safeErr = {
         error: error.message,
         stack: error.stack,
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      };
+      log.error('Auth.js Error', '', safeErr);
     },
     warn(message: string) {
       log.warn('Auth.js Warning', '', {
         message,
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     },
-    debug(message: string) { //only logs if debug: true
-      log.debug('Auth.js Debug', '', message)
+    debug(message: string) {
+      //only logs if debug: true
+      log.debug('Auth.js Debug', '', message);
     },
   },
 
   debug: enable.logging,
   ...authConfig,
-})
+});

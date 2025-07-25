@@ -1,105 +1,30 @@
-// Authentication API client
 import { ApiClient } from '@/lib/api-client';
-import { 
-  AuthCredentials, 
-  AuthResponse, 
-  RegisterRequest, 
-  ConfirmSignupRequest,
-  RefreshTokenRequest,
-  LogoutRequest 
-} from '@/lib/charon-client/generated';
+import { AuthCredentials, AuthResponse, RegisterRequest, ConfirmSignupRequest } from '@/domains/auth/types';
 
 export class AuthClient extends ApiClient {
-  constructor(authToken?: string) {
-    super('auth', '/auth', authToken);
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('auth', baseUrl);
   }
 
-  async login(credentials: AuthCredentials): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseUrl}/user/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw this.handleError(data);
-    }
-    return data.data;
+  async register(userData: RegisterRequest) {
+    return this.post<AuthResponse>('/user/register', userData);
   }
 
-  async register(userData: RegisterRequest): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/user/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw this.handleError(data);
-    }
-    return data;
+  async confirm(userData: ConfirmSignupRequest) {
+    return this.post('/user/confirm', userData);
   }
 
-  async confirmSignup(confirmationData: ConfirmSignupRequest): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/user/confirm`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(confirmationData),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw this.handleError(data);
-    }
-    return data;
+  async login(userData: AuthCredentials) {
+    return this.post<AuthResponse>('/user/login', userData);
   }
 
-  async refreshToken(refreshToken: string): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseUrl}/user/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refreshToken }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw this.handleError(data);
-    }
-    return data.data;
+  async logout(accessToken: string) {
+    return this.post('/user/logout', { accessToken });
   }
 
-  async logout(accessToken: string): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/user/logout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ accessToken }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw this.handleError(data);
-    }
-    return data;
+  async refreshToken(refreshToken: string) {
+    return this.post<AuthResponse>('/user/refresh', { refreshToken });
   }
+}
 
-  private handleError(data: any): Error {
-    // Import ApiError here to avoid circular dependency
-    const { ApiError } = require('../../shared/errors');
-    if (data.name) {
-      return ApiError.fromCognitoError(data);
-    }
-    return ApiError.fromResponse(data);
-  }
-} 
+export const authClient = new AuthClient();

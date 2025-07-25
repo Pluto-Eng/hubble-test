@@ -3,13 +3,10 @@
 
 // Core domains
 export * from './auth';
+export * from './user';
+export * from './users';
 export * from './accounts';
+export * from './organizations';
+export * from './loan-applications';
 export * from './loans';
 export * from './files';
-export * from './organizations';
-export * from './users';
-
-// Shared utilities
-export * from './shared/types';
-export * from './shared/errors';
-export * from './shared/api';

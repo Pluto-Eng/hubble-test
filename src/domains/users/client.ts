@@ -1,46 +1,29 @@
 // Users API client
 import { ApiClient } from '@/lib/api-client';
-import { User, CreateUserRequest, UpdateUserRequest, UserProfile } from './types';
+import { User, CreateUserRequest, UpdateUserRequest } from '@/domains/users/types';
 
 export class UsersClient extends ApiClient {
-  constructor(authToken?: string) {
-    super('users', '/admin/users', authToken);
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('users', baseUrl);
   }
 
-  async getUsers(params?: any): Promise<User[]> {
-    const response = await this.getAll<User>(params);
-    return response.data;
+  async getUsers() {
+    return this.get<User>('/admin/users');
   }
 
-  async getUser(id: string): Promise<User> {
-    return this.getById<User>(id);
+  async getUser(id: string) {
+    return this.get<User>(`/admin/users/${id}`);
   }
 
-  async createUser(data: CreateUserRequest): Promise<User> {
-    return this.create<User>(data);
+  async createUser(data: CreateUserRequest) {
+    return this.post<User>(`/admin/users`, data);
   }
 
-  async updateUser(id: string, data: UpdateUserRequest): Promise<User> {
-    return this.update<User>(id, data);
+  async updateUser(id: string, data: UpdateUserRequest) {
+    return this.put<User>(`/admin/users/${id}`, data);
   }
 
-  async deleteUser(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteUser(id: string) {
+    return this.delete(`/admin/users/${id}`);
   }
 }
-
-export class UserProfileClient extends BaseApiClient {
-  constructor(authToken?: string) {
-    super('/user/profile', authToken);
-  }
-
-  async getProfile(): Promise<UserProfile> {
-    const response = await this.request<UserProfile>('GET');
-    return response.data;
-  }
-
-  async updateProfile(data: UpdateUserRequest): Promise<UserProfile> {
-    const response = await this.request<UserProfile>('PUT', '', data);
-    return response.data;
-  }
-} 

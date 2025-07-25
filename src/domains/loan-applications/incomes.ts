@@ -3,28 +3,29 @@ import { ApiClient } from '@/lib/api-client';
 import { LoanIncome, CreateLoanIncomeRequest } from './types';
 
 export class LoanIncomesClient extends ApiClient {
-  constructor(accountId: string, loanApplicationId: string, authToken?: string) {
-    super(`/accounts/${accountId}/loan-applications/${loanApplicationId}/incomes`, authToken);
+  constructor(baseUrl: any = 'api/proxy/') {
+    super('loan-incomes', baseUrl);
   }
 
-  async getIncomes(params?: any): Promise<LoanIncome[]> {
-    const response = await this.getAll<LoanIncome>(params);
-    return response.data;
+  async getIncomes() {
+    return this.get<LoanIncome>('/loan-incomes');
   }
 
-  async getIncome(id: string): Promise<LoanIncome> {
-    return this.getById<LoanIncome>(id);
+  async getIncome(id: string) {
+    return this.get<LoanIncome>(`/loan-incomes/${id}`);
   }
 
-  async createIncome(data: CreateLoanIncomeRequest): Promise<LoanIncome> {
-    return this.create<LoanIncome>(data);
+  async createIncome(data: CreateLoanIncomeRequest) {
+    return this.post<LoanIncome>(`/loan-incomes`, data);
   }
 
-  async updateIncome(id: string, data: Partial<CreateLoanIncomeRequest>): Promise<LoanIncome> {
-    return this.update<LoanIncome>(id, data);
+  async updateIncome(id: string, data: Partial<CreateLoanIncomeRequest>) {
+    return this.put<LoanIncome>(`/loan-incomes/${id}`, data);
   }
 
-  async deleteIncome(id: string): Promise<void> {
-    return this.delete(id);
+  async deleteIncome(id: string) {
+    return this.delete(`/loan-incomes/${id}`);
   }
-} 
+}
+
+export const loanIncomesClient = new LoanIncomesClient();

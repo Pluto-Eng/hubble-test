@@ -4,13 +4,7 @@ export type shouldLog = (level: string) => boolean;
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'log' | 'dir' | 'trace' | 'table';
 export type LoggerFn = (scope: string, ...messages: any[]) => void;
 
-export type LogFn = (
-  level: LogLevel,
-  emoji: string,
-  color?: string,
-  style1?: string,
-  style2?: string
-) => LoggerFn;
+export type LogFn = (level: LogLevel, emoji: string, color?: string, style1?: string, style2?: string) => LoggerFn;
 
 export interface Logger {
   start: LoggerFn;
@@ -30,29 +24,51 @@ export interface Logger {
   middleware: LoggerFn;
 }
 
-const red = "\x1b[38;2;240;100;100m";
-const pink = "\x1b[38;2;255;105;180m";
-const blushPink = "\x1b[38;2;255;182;193m";
-const lavenderMist = "\x1b[38;2;230;230;250m";
-const lavender = "\x1b[38;2;216;191;216m";
-const purple = "\x1b[38;2;180;140;255m";
-const blue = "\x1b[34m";
-const powderBlue = "\x1b[38;2;176;224;230m";
-const green = "\x1b[32m";
-const yellow = "\x1b[33m";
-const lightGray = "\x1b[38;2;180;180;180m";
-const whiteSmoke = "\x1b[38;2;245;245;245m";
+const red = '\x1b[38;2;240;100;100m';
+const pink = '\x1b[38;2;255;105;180m';
+const blushPink = '\x1b[38;2;255;182;193m';
+const lavenderMist = '\x1b[38;2;230;230;250m';
+const lavender = '\x1b[38;2;216;191;216m';
+const purple = '\x1b[38;2;180;140;255m';
+const blue = '\x1b[34m';
+const powderBlue = '\x1b[38;2;176;224;230m';
+const green = '\x1b[32m';
+const yellow = '\x1b[33m';
+const lightGray = '\x1b[38;2;180;180;180m';
+const whiteSmoke = '\x1b[38;2;245;245;245m';
 
-const bold = "\x1b[1m";
-const italic = "\x1b[3m";
-const underline = "\x1b[4m";
-const reset = "\x1b[0m";
+const bold = '\x1b[1m';
+const italic = '\x1b[3m';
+const underline = '\x1b[4m';
+const reset = '\x1b[0m';
 
 const isBrowser = typeof window !== 'undefined';
 
 const shouldLog: shouldLog = (level) => {
+  // if (!enable.logging) return false;
   if (!enable.logging) return ['error', 'warn'].includes(level);
-  return true;
+  else {
+    // Immediate global setup for all environments
+    (() => {
+      if (typeof globalThis !== 'undefined') globalThis.log = log;
+      if (typeof window !== 'undefined') (window as any).log = log;
+      if (typeof global !== 'undefined') (global as any).log = log;
+    })();
+
+    return true;
+  }
+};
+
+const inspectObject = async (obj: any) => {
+  if (isBrowser) {
+    return obj; // browser devtools handle expansion natively
+  } else {
+    // Dynamically require util only on server to avoid bundling in client
+    // Using require here because top-level import breaks client bundle
+    // You can also do dynamic import but require is simpler in Node context
+    const util = await import('util');
+    return util.inspect(obj, { depth: null, colors: true, compact: false });
+  }
 };
 
 const logFn: LogFn = (level, emoji, color = '', style1 = '', style2 = '') => {
@@ -64,15 +80,15 @@ const logFn: LogFn = (level, emoji, color = '', style1 = '', style2 = '') => {
       throw new Error(`Logger: Missing scope in ${level} log`);
     }
 
-    const prefix = isBrowser
-      ? `[${scope}]`
-      : `${style1}${style2}${color}[${scope}]${reset}`;
+    const prefix = isBrowser ? `[${scope}]` : `${style1}${style2}${color}[${scope}]${reset}`;
 
-    const content = !msg ? `${prefix}` : isBrowser
-      ? `${prefix} ${msg}`
-      : `${prefix} ${msg}${reset}:`;
+    const content = !msg ? `${prefix}` : isBrowser ? `${prefix} ${msg}` : `${prefix} ${msg}${reset}:`;
 
-    (console as any)[level](`${emoji}`, `${content}`, ...args);
+    const expandedArgs = args.map((arg) => (typeof arg === 'object' && arg !== null ? inspectObject(arg) : arg));
+
+    (console as any)[level](`${emoji}`, `${content}`, ...expandedArgs);
+
+    // (console as any)[level](`${emoji}`, `${content}`, ...args);
   };
 };
 
@@ -91,15 +107,8 @@ export const log: Logger = {
   trace: logFn('trace', '🔍', whiteSmoke, italic),
   table: logFn('table', '📊', whiteSmoke),
   check: logFn('log', '❓', purple),
-  middleware: logFn('info', '📣', lightGray)
+  middleware: logFn('info', '📣', lightGray),
 };
-
-// Immediate global setup for all environments
-(() => {
-  if (typeof globalThis !== 'undefined') globalThis.log = log;
-  if (typeof window !== 'undefined') (window as any).log = log;
-  if (typeof global !== 'undefined') (global as any).log = log;
-})();
 
 // //other console methods
 // console.group("First group"); //first group

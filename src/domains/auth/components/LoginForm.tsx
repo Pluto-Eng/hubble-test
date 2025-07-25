@@ -27,7 +27,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
-  
+
   // Get callback URL from search params
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
@@ -43,7 +43,7 @@ export function LoginForm() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       log.start('LoginForm', 'Attempting login with Auth.js v5 server action:', { email: data.email });
 
       // Create FormData for server action
@@ -67,13 +67,13 @@ export function LoginForm() {
         // No need to manually redirect - server action handles it
       }
     } catch (err: unknown) {
-      console.error('LoginForm', 'Login error:', err);
+      log.error('LoginForm', 'Login error:', err);
       let errorMessage = 'An error occurred during login. Please try again.';
-      
+
       if (err instanceof Error) {
         errorMessage = err.message;
       }
-      
+
       setError(errorMessage);
       toast.error(errorMessage);
       log.error('LoginForm', 'Login exception:', { error: err });
@@ -127,10 +127,10 @@ export function LoginForm() {
               </FormItem>
             )}
           />
-          <Button 
-            type="submit" 
-            variant="ghost" 
-            className="w-full" 
+          <Button
+            type="submit"
+            variant="ghost"
+            className="w-full"
             disabled={isLoading}
           >
             {isLoading ? 'Signing in...' : 'Log In'}
@@ -142,7 +142,7 @@ export function LoginForm() {
 }
 
 // import { signIn } from "@/auth"
- 
+
 // export function SignIn() {
 //   return (
 //     <form

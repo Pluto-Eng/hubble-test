@@ -1,8 +1,8 @@
-"use server";
+'use server';
 
-import { auth } from "@/auth";
-import { userClient, userNameSchema } from "@/domains/user/index";
-import { revalidatePath } from "next/cache";
+import { auth } from '@/auth';
+import { userClient, userNameSchema } from '@/domains/user/index';
+import { revalidatePath } from 'next/cache';
 
 export type FormData = {
   name: string;
@@ -10,23 +10,25 @@ export type FormData = {
 
 export async function updateUserName(userId: string, data: FormData) {
   try {
-    const session = await auth()
+    const session = await auth();
 
     if (!session?.user || session?.user.id !== userId) {
-      throw new Error("Unauthorized");
+      throw new Error('Unauthorized');
     }
 
     const { name } = userNameSchema.parse(data);
 
     // Update the user name.
-    await userClient.update(userId, {
-      name: name,
-    })
+    await userClient.updateProfile({ nameGiven: name });
 
     revalidatePath('/dashboard/settings');
-    return { status: "success" };
+    return { status: 'success' };
   } catch (error) {
-    log.error('Actions/Auth/ManageUser', 'Error updating user name', error)
-    return { status: "error" }
+    const safeErr = {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+    log.error('Actions/Auth/ManageUser', 'Error updating user name', safeErr);
+    return { status: 'error' };
   }
 }
